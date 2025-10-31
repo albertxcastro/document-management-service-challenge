@@ -1,4 +1,4 @@
-# Stage 1: Build the native executable in a self-contained environment
+# Stage 1: Build the native executable
 FROM ubuntu:22.04 as builder
 
 # Install required dependencies
@@ -9,8 +9,8 @@ ENV GRAALVM_HOME=/usr/lib/jvm/graalvm
 ENV MAVEN_HOME=/usr/share/maven
 ENV PATH="${GRAALVM_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
 
-# Install GraalVM
-RUN curl -L -o graalvm.tar.gz https://download.oracle.com/graalvm/17/archive/graalvm-jdk-17.0.12_linux-x64_bin.tar.gz && \
+# Install GraalVM 21 (compatible with Java 17 source)
+RUN curl -L -o graalvm.tar.gz https://download.oracle.com/graalvm/21/archive/graalvm-jdk-21.0.3_linux-x64_bin.tar.gz && \
     mkdir -p ${GRAALVM_HOME} && \
     tar -xzf graalvm.tar.gz -C ${GRAALVM_HOME} --strip-components=1
 
@@ -21,34 +21,37 @@ RUN curl -L -o maven.tar.gz https://archive.apache.org/dist/maven/maven-3/3.9.6/
 
 WORKDIR /workspace
 
+# Copy pom.xml and download dependencies
 COPY pom.xml ./
-
-# Download dependencies
 RUN mvn dependency:go-offline
 
-# Copy the rest of the application source code
+# Copy source code
 COPY src src
 
-# Build the native executable
-RUN mvn -Pnative -DskipTests -Dnative-image.build-args="--optimize=size" package
+# Build native executable (remove unsupported flags)
+RUN mvn -Pnative -DskipTests \
+    -Dnative-image.build-args="--gc=serial --no-fallback --enable-url-protocols=http,https --report-unsupported-elements-at-runtime --initialize-at-build-time=ch.qos.logback,org.slf4j" \
+    package
 
-# Stage 2: Create the final, minimal image
-FROM gcr.io/distroless/base-debian12:nonroot
+# ------------------------
+# Stage 2: Final minimal image
+# ------------------------
+FROM debian:12-slim
 
-# Install zlib dependency
+# Install runtime dependency for zlib
 RUN apt-get update && apt-get install -y zlib1g && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy the native executable from the builder stage
+# Copy the native executable
 COPY --from=builder /workspace/target/document-management-service-challenge .
 
-# Expose the application port
+# Expose application port
 EXPOSE 8080
 
-# Create a non-root user and switch to it
+# Create non-root user and switch to it
 RUN useradd -ms /bin/bash nonroot
 USER nonroot
 
-# Set the entrypoint
+# Set entrypoint
 ENTRYPOINT ["./document-management-service-challenge"]
