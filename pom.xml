@@ -1,80 +1,94 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.4.3</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
+
 	<groupId>com.clara.ops.challenge</groupId>
 	<artifactId>document-management-service-challenge</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>document-management-service-challenge</name>
-	<description>This project implements a file management system, integrates with simulated services (LocalStack for AWS S3), features centralized exception handling, and includes both unit and integration tests. Developed as a challenge to assess advanced skills in Java 8+, Spring Boot, testing, Docker containers and docker-compose, while adhering to design patterns and best coding practices.</description>
+	<description>
+		Lightweight document-management microservice using Spring Boot + PostgreSQL + MinIO,
+		optimized for native execution under 50 MB.
+	</description>
 
 	<properties>
 		<java.version>17</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
-		<project.artifact.name>${project.artifactId}</project.artifact.name>
-		<build.number>LOCAL</build.number>
-
+		<maven.compiler.target>${java.version}</maven.compiler.target>
+		<minio.version>8.4.3</minio.version>
 		<spotless.maven.plugin.version>2.43.0</spotless.maven.plugin.version>
 		<googleJavaFormat.version>1.22.0</googleJavaFormat.version>
-
-		<minio.version>8.4.3</minio.version>
 	</properties>
+
 	<dependencies>
+		<!-- Reactive & lightweight web stack (Netty, not Tomcat) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
+
+		<!-- Simpler database access (no Hibernate ORM) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
+			<artifactId>spring-boot-starter-data-jdbc</artifactId>
 		</dependency>
+
+		<!-- PostgreSQL driver -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+
+		<!-- MinIO SDK -->
 		<dependency>
 			<groupId>io.minio</groupId>
 			<artifactId>minio</artifactId>
 			<version>${minio.version}</version>
 		</dependency>
+
+		<!-- Optional: validation annotations -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-devtools</artifactId>
-			<scope>runtime</scope>
-			<optional>true</optional>
+			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+
+		<!-- Lombok for boilerplate reduction -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+
+		<!-- Context indexer for faster startup -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-indexer</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation</artifactId>
-		</dependency>
 	</dependencies>
 
 	<build>
-		<finalName>${project.artifact.name}-${project.version}-${build.number}</finalName>
+		<finalName>${project.artifactId}</finalName>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -87,42 +101,7 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
-			<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.8</version>
-			</plugin>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<excludes>
-						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>prepare-agent</id>
-						<goals>
-							<goal>prepare-agent</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>report</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>report</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
+
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
 				<artifactId>spotless-maven-plugin</artifactId>
@@ -136,34 +115,28 @@
 						<googleJavaFormat>
 							<version>${googleJavaFormat.version}</version>
 							<style>GOOGLE</style>
-							<reflowLongStrings>true</reflowLongStrings>
-							<formatJavadoc>true</formatJavadoc>
 						</googleJavaFormat>
 						<removeUnusedImports/>
 						<formatAnnotations/>
 					</java>
-
-					<markdown>
-						<includes>
-							<include>**/*.md</include>
-						</includes>
-						<flexmark/>
-					</markdown>
 				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>check</goal>
-						</goals>
-					</execution>
-				</executions>
+			</plugin>
+
+			<!-- Spring Boot plugin (handles AOT + repackage) -->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
 
 	<profiles>
+		<!-- GraalVM native build -->
 		<profile>
 			<id>native</id>
+			<properties>
+				<spring.aot.enabled>true</spring.aot.enabled>
+			</properties>
 			<build>
 				<plugins>
 					<plugin>
@@ -172,13 +145,25 @@
 						<executions>
 							<execution>
 								<id>build-native</id>
+								<phase>package</phase>
 								<goals>
 									<goal>build</goal>
 								</goals>
-								<phase>package</phase>
 							</execution>
 						</executions>
+						<configuration>
+							<buildArgs>
+								<arg>--gc=serial</arg>
+								<arg>--no-fallback</arg>
+								<arg>--no-server</arg>
+								<arg>--enable-url-protocols=http,https</arg>
+								<arg>--report-unsupported-elements-at-runtime</arg>
+								<arg>--strict-image-heap</arg>
+								<arg>--initialize-at-build-time=ch.qos.logback,org.slf4j</arg>
+							</buildArgs>
+						</configuration>
 					</plugin>
+
 					<plugin>
 						<groupId>org.springframework.boot</groupId>
 						<artifactId>spring-boot-maven-plugin</artifactId>
